@@ -194,7 +194,7 @@ pre.sum{white-space:pre-wrap;font-family:var(--f-body);font-size:13.5px;line-hei
 
   // ---------- pantallas ----------
   function cabecera(conTrack){
-    var k = R.paso, n = nPasos(), na = P ? P.ambientes.length : 0, track = '';
+    var k = R.paso, n = P ? nPasos() : 0, na = P ? P.ambientes.length : 0, track = '';
     if (conTrack) for (var i=0;i<n;i++) track += '<span class="'+(i<k?'on':i===k?'now':'')+'"></span>';
     var info = !conTrack ? '' : k===0 ? 'Inicio' : k<=na ? 'Ambiente '+k+' de '+na : k===na+1 ? 'Tu experiencia' : 'Conformidad';
     return '<header class="head"><div class="wrap"><div class="brandrow"><a class="brand" href="https://www.fincaestudio.io" target="_blank" rel="noopener"><img src="logo-fe.png" alt="">Finca Estudio</a><span class="stepinfo">'+info+'</span></div>'+
@@ -390,6 +390,7 @@ pre.sum{white-space:pre-wrap;font-family:var(--f-body);font-size:13.5px;line-hei
     if (el.dataset.f === 'fotos' || el.dataset.f === 'conf'){ R[el.dataset.f] = el.checked; save(); return; }
   });
 
+  window.addEventListener('hashchange', function(){ location.reload(); });
   render();
 })();
 </script>
