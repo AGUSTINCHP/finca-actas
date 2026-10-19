@@ -150,6 +150,7 @@ pre.sum{white-space:pre-wrap;font-family:var(--f-body);font-size:13.5px;line-hei
 <script>
 (function(){
   var MAIL_POR_DEFECTO = 'info@fincaestudio.io';
+  var API = 'https://script.google.com/macros/s/AKfycbwMYPJlcr4yqasvmBYYrUlGN6Whp8x8ydhfYbxaC0vqL-bWCjqOm3CaQLVI73glJcJb/exec';
   var app = document.getElementById('app');
   var $ = function(s){ return document.querySelector(s); };
   var ASPECTOS = [['diseno','El diseño y la propuesta'],['terminaciones','La calidad de las terminaciones'],['plazos','El cumplimiento de los plazos'],['comunicacion','La comunicación con el estudio'],['obra','El orden y la limpieza en la obra']];
@@ -175,14 +176,21 @@ pre.sum{white-space:pre-wrap;font-family:var(--f-body);font-size:13.5px;line-hei
     } catch(e){ return null; }
   }
   var H = (location.hash||'').slice(1);
-  var P = H ? decode(H) : null;
+  var CODIGO = String(new URLSearchParams(location.search).get('c') || '').trim().toUpperCase();
+  var P = (!CODIGO && H) ? decode(H) : null;
+  var cargando = !!CODIGO;
 
   // ---------- borrador del cliente (en su navegador) ----------
-  var KEY = 'finca-acta-' + (P && P.id ? P.id : H.slice(0,48));
+  var KEY = 'finca-acta-';
   function emptyR(){ return {items:{}, rat:{}, nps:null, coment:'', fotos:false, nombre:'', conf:false, paso:0, enviado:false}; }
   function load(){ try { var raw = localStorage.getItem(KEY); if (raw) return Object.assign(emptyR(), JSON.parse(raw)); } catch(e){} return emptyR(); }
   function save(){ try { localStorage.setItem(KEY, JSON.stringify(R)); } catch(e){} }
-  var R = load(), dir = 'fwd', err = '', lastMark = null, estado = R.enviado ? 'ok' : '';
+  var R = emptyR(), dir = 'fwd', err = '', lastMark = null, estado = '';
+  function iniciar(){
+    KEY = 'finca-acta-' + (P && P.id ? P.id : (CODIGO || H.slice(0,48)));
+    R = load(); estado = R.enviado ? 'ok' : '';
+  }
+  if (P) iniciar();
 
   function totals(){
     var tot=0, ok=0, obs=0;
@@ -303,7 +311,7 @@ pre.sum{white-space:pre-wrap;font-family:var(--f-body);font-size:13.5px;line-hei
     var t = totals(), obs = [];
     P.ambientes.forEach(function(a, ai){ a.items.forEach(function(it, ii){ var st = R.items[ai+'-'+ii]; if (st && st.e==='obs') obs.push(a.nombre+' · '+it+': '+st.t); }); });
     var datos = {
-      asunto: 'Acta de entrega · '+P.cliente+(P.proyecto?' · '+P.proyecto:'')+(t.obs?' · '+t.obs+' para revisar':' · todo conforme'),
+      codigo: P.id, asunto: 'Acta de entrega · '+P.cliente+(P.proyecto?' · '+P.proyecto:'')+(t.obs?' · '+t.obs+' para revisar':' · todo conforme'),
       mail: P.mail, cliente: P.cliente, proyecto: P.proyecto || '', fechaEntrega: fmt(P.fecha) || '',
       firma: R.nombre.trim(), revisados: t.done+' de '+t.tot, cantRevisar: t.obs, detalleRevisar: obs.join('\n'),
       diseno: R.rat.diseno, terminaciones: R.rat.terminaciones, plazos: R.rat.plazos, comunicacion: R.rat.comunicacion, obra: R.rat.obra,
@@ -345,6 +353,10 @@ pre.sum{white-space:pre-wrap;font-family:var(--f-body);font-size:13.5px;line-hei
   }
 
   function render(){
+    if (cargando){
+      app.innerHTML = cabecera(false)+'<main class="wrap"><div class="screen"><div class="intro"><p class="eyebrow">Acta de entrega</p><p class="lead">Cargando tu proyecto…</p></div></div></main>';
+      return;
+    }
     if (!P){
       app.innerHTML = cabecera(false)+'<main class="wrap"><div class="screen"><div class="intro"><p class="eyebrow">Acta de entrega</p><h1 class="title">Este link no está <em>completo</em></h1>'+
         '<p class="lead">Abrí el link tal cual te lo mandó el estudio. Si el problema sigue, escribinos a '+MAIL_POR_DEFECTO+'.</p></div></div></main>';
@@ -392,6 +404,18 @@ pre.sum{white-space:pre-wrap;font-family:var(--f-body);font-size:13.5px;line-hei
 
   window.addEventListener('hashchange', function(){ location.reload(); });
   render();
+  if (CODIGO){
+    fetch(API + '?c=' + encodeURIComponent(CODIGO))
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d && d.ok && d.a && d.a.length){
+          P = {cliente:d.c, proyecto:d.p||'', fecha:d.f||'', mail:MAIL_POR_DEFECTO, resena:d.r||'', id:d.i||CODIGO, planilla:API,
+               ambientes:d.a.map(function(x){ return {nombre:x[0], items:x[1]}; })};
+          iniciar();
+        }
+        cargando = false; render();
+      }, function(){ cargando = false; render(); });
+  }
 })();
 </script>
 </body>
